@@ -1,8 +1,0 @@
-﻿  RemoteShellcodeInject_XOR.cpp
-C:\Users\dev\Desktop\Code\CPP\Injection\RemoteShellcodeInject_XOR\RemoteShellcodeInject_XOR.cpp(254,17): warning C4101: 'runMe': unreferenced local variable
-  Generating code
-  2 of 25 functions ( 8.0%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    0 functions had inline decision re-evaluated but remain unchanged
-  Finished generating code
-  RemoteShellcodeInject_XOR.vcxproj -> C:\Users\dev\Desktop\Code\CPP\Injection\RemoteShellcodeInject_XOR\x64\Release\RemoteShellcodeInject_XOR.exe

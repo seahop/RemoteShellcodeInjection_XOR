@@ -1,1 +1,0 @@
-C:\Users\dev\Desktop\Code\CPP\Injection\RemoteShellcodeInject_XOR\x64\Release\RemoteShellcodeInject_XOR.exe
