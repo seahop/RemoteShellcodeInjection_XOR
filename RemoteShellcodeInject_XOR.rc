@@ -50,7 +50,7 @@ END
 // RCDATA
 //
 
-IDR_RCDATA1             RCDATA                  "xor_encoded.bin"
+IDR_RCDATA1             RCDATA                  "C:\\Users\\dev\\Desktop\\Code\\encoded.bin"
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
